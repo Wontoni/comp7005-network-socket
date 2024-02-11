@@ -3,12 +3,16 @@ import sys
 import os
 import ipaddress
 
-
-socket_path = '/tmp/domain_socket'
+# Variables to change based on server host location
 ipv4 = "10.0.0.34"
 ipv6 = "2604:3d08:597e:ef00:a21d:8635:3d84:d9d1"
+
+# Change to ipv4 for connection via IPv4 Address or ipv6 for IPv6
 server_host = ipv6
+
 server_port = 8080
+
+
 file_name = None
 client = None
 
@@ -62,7 +66,7 @@ def connect_client():
         print(f"Error: Failed to connect to socket path")
         exit(1)
 
-def send_message(words):
+def send_message(words): 
     try: 
         encoded = words.encode()
         # x = str(len(words)).encode()
@@ -112,19 +116,15 @@ def replace_new_lines(text_data):
 
 def is_ipv4(ip_str):
     try:
-        # Try to create an IPv4 address
         ipaddress.IPv4Address(ip_str)
         return True
     except ipaddress.AddressValueError:
-        # The string is not a valid IPv4 address
         pass
 
     try:
-        # Try to create an IPv6 address
         ipaddress.IPv6Address(ip_str)
         return False
     except ipaddress.AddressValueError:
-        # The string is not a valid IPv6 address
         pass
     err_message = "Invalid IP Address found."
     handle_error(err_message)

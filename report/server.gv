@@ -1,4 +1,4 @@
-digraph Client {
+digraph Server {
     node [shape=circle; fontsize=10; width=1;height=1;];
     edge [fontsize=10];
 
@@ -20,7 +20,6 @@ digraph Client {
     LISTENING -> CONNECTION_RECEIVED [label="receive_connection"]
     CONNECTION_RECEIVED -> HANDLE_CONNECTION [label="handle_connection"]
     HANDLE_CONNECTION -> CONNECTION_RECEIVED [label="receive_connection"]
-    HANDLE_CONNECTION -> HANDLE_ERROR [label="handle_error"]
     HANDLE_ERROR -> CLEANUP [label="cleanup"]
     CLEANUP -> EXIT
 }

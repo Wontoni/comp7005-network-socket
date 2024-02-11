@@ -18,20 +18,9 @@ def main():
     listen_connections()
     try:
         while True:
-            
-            data = accept_connection()
-            # decode and manipulate data
-            decoded_data = check_data(data)
-            words = get_words(decoded_data)
-            word_count = get_word_count(words)
-            char_count = get_char_count(words)
-            char_freq = get_char_freq(words)
-            sorted_chars = sort_dict(char_freq)
-            response = format_response(word_count, char_count, sorted_chars)
-            # Send a response back to the client
-            send_response(response)
+            accept_connection()
     except Exception as e:
-        print(f"Error: Failed to receive data from client")
+        handle_error("Failed to receive data from client")
 
 def create_socket():
     try:
@@ -47,17 +36,15 @@ def create_socket():
         server.setblocking(0)
             
     except Exception as e:
-        print(e)
-        print(f"Error: Failed to create socket server")
+        handle_error("Failed to create socket server")
         exit(1)
         
-
 def listen_connections():
     try:
         server.listen(5)
         print(f'Server is listening on port {server_port} for incoming connections...')
     except Exception as e:
-        print(f"Error: Failed to listen to connections")
+        handle_error("Failed to listen to connections")
         exit(1)
 
 def accept_connection():
@@ -76,12 +63,10 @@ def accept_connection():
                 else:
                     data = s.recv(1024)
                     if data:
-                        # print(f"Receieved data from: ", s.getpeername())
                         message_queues[s].put(data)
                         if s not in outputs:
                             outputs.append(s)
                     else:
-                        # print(f"Closing: ", client_addr)
                         if s in outputs:
                             outputs.remove(s)
                         inputs.remove(s)
@@ -93,15 +78,12 @@ def accept_connection():
                 try:
                     message_data = message_queues[s].get_nowait()
                 except queue.Empty:
-                    # print(f"Output queue for", s.getpeername(), "is empty")
                     outputs.remove(s)
                 else:
-                    # print(f"Sending data to: ", s.getpeername())
                     next_msg = handle_data(message_data)
                     s.send(next_msg)
             
             for s in exceptional:
-                # print(f"Handling exceptional condition for: ", s.getpeername())
                 inputs.remove(s)
                 if s in outputs:
                     outputs.remove(s)
@@ -109,7 +91,7 @@ def accept_connection():
 
                 del message_queues[s]
     except Exception as e:
-        print(f"Error: {e}")
+        handle_error(e)
         exit(1)
 
 def handle_data(data):
@@ -121,7 +103,6 @@ def handle_data(data):
     sorted_chars = sort_dict(char_freq)
     response = format_response(word_count, char_count, sorted_chars)
     response = response.encode()
-    response = decoded_data.encode()
     return response
 
 def check_data(data):
@@ -132,23 +113,7 @@ def check_data(data):
         res = data.decode()
         return res
     except Exception as e:
-        print(f"Error: {e}")
-        exit(1)
-
-def send_response(response):
-    try:
-        connection.sendall(response.encode())
-    except Exception as e:
-        print(e)
-        print(f"Error: Failed to send response to client")
-        exit(1)
-
-def close_socket_server(connection, socket_path):
-    try:
-        connection.close()
-        os.unlink(socket_path)
-    except Exception as e:
-        print(f"Error: Failed to close the socket")
+        handle_error(e)
         exit(1)
 
 def get_words(word_string):
@@ -164,7 +129,7 @@ def remove_whitespace(word_string):
     try:
         return re.sub(' +', ' ', word_string)
     except Exception as e:
-        print(f"Error: Failed to remove whitespaces in data")
+        handle_error("Failed to remove whitespaces in data")
         exit(1)
 
 def get_char_count(words):
@@ -195,5 +160,15 @@ def sort_dict(char_freq):
     keys = list(char_freq.keys())
     keys.sort()
     return {i: char_freq[i] for i in keys}
+
+def handle_error(err_message):
+    print(f"Error: {err_message}")
+    cleanup(False)
+    
+def cleanup(success):
+    server.close()
+    if success:
+        exit(0)
+    exit(1)
 
 main()
