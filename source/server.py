@@ -57,7 +57,7 @@ def accept_connection():
                 if s is server:
                     connection, client_addr = s.accept()
                     print('Connection Received: ', client_addr)
-                    connection.setblocking(0)
+                    connection.setblocking(1)
                     inputs.append(connection)
 
                     message_queues[connection] = queue.Queue()
