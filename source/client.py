@@ -14,14 +14,13 @@ server_host = ipv4
 server_port = 8080
 
 
-file_name = "test.txt"
+file_name = None
 client = None
 
 
 def main():
-    # check_args(sys.argv)
-    # handle_args(sys.argv)
-    file_name = "test.txt"
+    check_args(sys.argv)
+    handle_args(sys.argv)
     words = read_file()
 
     if words:
