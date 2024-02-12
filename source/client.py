@@ -1,25 +1,27 @@
 import socket
 import sys
-import os
 import ipaddress
+import struct
+import pickle
 
 # Variables to change based on server host location
-ipv4 = "10.0.0.34"
+ipv4 = "10.0.0.63"
 ipv6 = "2604:3d08:597e:ef00:a21d:8635:3d84:d9d1"
 
 # Change to ipv4 for connection via IPv4 Address or ipv6 for IPv6
-server_host = ipv6
+server_host = ipv4
 
 server_port = 8080
 
 
-file_name = None
+file_name = "test.txt"
 client = None
 
 
 def main():
-    check_args(sys.argv)
-    handle_args(sys.argv)
+    # check_args(sys.argv)
+    # handle_args(sys.argv)
+    file_name = "test.txt"
     words = read_file()
 
     if words:
@@ -68,11 +70,8 @@ def connect_client():
 
 def send_message(words): 
     try: 
-        encoded = words.encode()
-        # x = str(len(words)).encode()
-        # client.sendall(x)
-        # client.recv(1)
-
+        encoded = pickle.dumps(words)
+        client.sendall(struct.pack(">I", len(encoded)))
         client.sendall(encoded)
     except Exception as e:
         print(e)
@@ -81,8 +80,16 @@ def send_message(words):
 
 def receieve_response():
     try: 
-        response = client.recv(1024)
-        print(f'Received response\n{response.decode()}')
+        data_size = struct.unpack(">I", client.recv(4))[0]
+        # receive payload till received payload size is equal to data_size received
+        received_data = b""
+        reamining_size = data_size
+        while reamining_size != 0:
+            received_data += client.recv(reamining_size)
+            reamining_size = data_size - len(received_data)
+        decoded_response = pickle.loads(received_data)
+
+        print(f'Received response\n{decoded_response}')
     except Exception as e:
         print(f"Error: Failed to receive response")
         exit(1)
@@ -96,7 +103,7 @@ def close_socket_client(client):
 
 def read_file():
     try:
-        with open(file_name, 'r') as file:
+        with open(file_name, 'r', errors="ignore") as file:
             content = file.read()
             if not content:
                 raise Exception("File is empty.")

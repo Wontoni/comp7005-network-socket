@@ -1,14 +1,15 @@
 import socket
-import os
 import re
 import select
 import queue
+import struct
+import pickle
+
 
 connection = None
 server = None
 server_host = "::"
 server_port = 8080
-buffer_size = 1024
 inputs = []
 outputs = []
 message_queues = {}
@@ -56,13 +57,22 @@ def accept_connection():
                 if s is server:
                     connection, client_addr = s.accept()
                     print('Connection Received: ', client_addr)
-                    connection.setblocking(0)
+                    connection.setblocking(1)
                     inputs.append(connection)
 
                     message_queues[connection] = queue.Queue()
                 else:
-                    data = s.recv(1024)
-                    if data:
+                    # data = s.recv(1024)
+                    data_size = struct.unpack(">I", s.recv(4))[0]
+                    receieved_data = b""
+                    remaining_data_size = data_size
+
+                    if data_size:
+                        while remaining_data_size != 0:
+                            receieved_data += s.recv(remaining_data_size)
+                            remaining_data_size = data_size - len(receieved_data)
+                        data = pickle.loads(receieved_data)
+                        inputs.remove(s)
                         message_queues[s].put(data)
                         if s not in outputs:
                             outputs.append(s)
@@ -81,7 +91,8 @@ def accept_connection():
                     outputs.remove(s)
                 else:
                     next_msg = handle_data(message_data)
-                    s.send(next_msg)
+                    s.sendall(struct.pack(">I", len(next_msg)))
+                    s.sendall(next_msg)
             
             for s in exceptional:
                 inputs.remove(s)
@@ -95,14 +106,14 @@ def accept_connection():
         exit(1)
 
 def handle_data(data):
-    decoded_data = check_data(data)
-    words = get_words(decoded_data)
+    # decoded_data = check_data(data)
+    words = get_words(data)
     word_count = get_word_count(words)
     char_count = get_char_count(words)
     char_freq = get_char_freq(words)
     sorted_chars = sort_dict(char_freq)
     response = format_response(word_count, char_count, sorted_chars)
-    response = response.encode()
+    response = pickle.dumps(response)
     return response
 
 def check_data(data):
@@ -111,7 +122,7 @@ def check_data(data):
             raise Exception("Failed to receive data")
             
         res = data.decode()
-        return res
+        return data
     except Exception as e:
         handle_error(e)
         exit(1)
@@ -154,6 +165,7 @@ def format_response(word_count, char_count, char_freq):
 
     for key, value in char_freq.items():
         response += "\n%s: %d"%(key, value)
+    response += "\n"
     return response
 
 def sort_dict(char_freq):
