@@ -5,16 +5,15 @@ import struct
 import pickle
 
 # Variables to change based on server host location
-ipv4 = "10.0.0.63"
+ipv4 = "10.0.0.34"
 ipv6 = "2604:3d08:597e:ef00:a21d:8635:3d84:d9d1"
 
 # Change to ipv4 for connection via IPv4 Address or ipv6 for IPv6
-server_host = ipv4
-
 server_port = 8080
 
 
 file_name = None
+server_host = None
 client = None
 
 
@@ -29,24 +28,24 @@ def main():
         send_message(words)
         receieve_response()
 
-        close_socket_client(client)
-
 def check_args(args):
     try:
-        if len(args) != 2:
+        if len(args) != 3:
             raise Exception("Invalid number of arguments")
         elif not args[1].endswith('.txt'):
             raise Exception("Invalid file extension, please input a .txt file")
+        is_ipv4(args[2]) # Will handle invalid addresses
     except Exception as e:
-        print(f"Error: {e}")
+        handle_error(e)
         exit(1)
 
 def handle_args(args):
-    global file_name
+    global file_name, server_host
     try:
         file_name = sys.argv[1]
+        server_host = sys.argv[2]
     except Exception as e:
-        print(f"Error: Failed to retrieve inputted arguments.")
+        handle_error("Failed to retrieve inputted arguments.")
 
 def create_socket():
     try: 
@@ -55,16 +54,15 @@ def create_socket():
         client = socket.socket((socket.AF_INET6, socket.AF_INET)[is_ipv4(server_host)], socket.SOCK_STREAM)
 
     except Exception as e:
-        print(e)
-        print(f"Error: Failed to create client socket")
+        handle_error("Failed to create client socket")
         exit(1)
 
 def connect_client():
     try: 
+        client.settimeout(10)
         client.connect((server_host, server_port))
     except Exception as e:
-        print(e)
-        print(f"Error: Failed to connect to socket path")
+        handle_error(f"Failed to connect to socket with the address and port - {server_host}:{server_port}")
         exit(1)
 
 def send_message(words): 
@@ -73,8 +71,7 @@ def send_message(words):
         client.sendall(struct.pack(">I", len(encoded)))
         client.sendall(encoded)
     except Exception as e:
-        print(e)
-        print(f"Error: Failed to send words")
+        handle_error("Failed to send words")
         exit(1)
 
 def receieve_response():
@@ -82,22 +79,15 @@ def receieve_response():
         data_size = struct.unpack(">I", client.recv(4))[0]
         # receive payload till received payload size is equal to data_size received
         received_data = b""
-        reamining_size = data_size
-        while reamining_size != 0:
-            received_data += client.recv(reamining_size)
-            reamining_size = data_size - len(received_data)
+        remaining_size = data_size
+        while remaining_size != 0:
+            received_data += client.recv(remaining_size)
+            remaining_size = data_size - len(received_data)
         decoded_response = pickle.loads(received_data)
 
-        print(f'Received response\n{decoded_response}')
+        display_message(decoded_response)
     except Exception as e:
-        print(f"Error: Failed to receive response")
-        exit(1)
-
-def close_socket_client(client):
-    try: 
-        client.close()
-    except Exception as e:
-        print(f"Error: Failed to close socket")
+        handle_error("Failed to receive response")
         exit(1)
 
 def read_file():
@@ -109,16 +99,16 @@ def read_file():
             formatted_data = replace_new_lines(content)
             return formatted_data
     except FileNotFoundError:
-        print(f"Error: File '{file_name}' not found.")
+        handle_error(f"File '{file_name}' not found.")
     except Exception as e:
-        print(f"Error: {e}")
+        handle_error(e)
 
 def replace_new_lines(text_data):
     try:
         res = text_data.replace('\n', ' ')
         return res
     except Exception as e:
-        print(f"Error: {e}")
+        handle_error(e)
 
 def is_ipv4(ip_str):
     try:
@@ -139,8 +129,13 @@ def handle_error(err_message):
     print(f"Error: {err_message}")
     cleanup(False)
     
+def display_message(message):
+    print(f'Received response\n{message}')
+    cleanup(True)
+
 def cleanup(success):
-    client.close()
+    if client:
+        client.close()
     if success:
         exit(0)
     exit(1)

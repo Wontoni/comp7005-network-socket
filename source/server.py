@@ -62,7 +62,6 @@ def accept_connection():
 
                     message_queues[connection] = queue.Queue()
                 else:
-                    # data = s.recv(1024)
                     data_size = struct.unpack(">I", s.recv(4))[0]
                     receieved_data = b""
                     remaining_data_size = data_size
@@ -106,7 +105,6 @@ def accept_connection():
         exit(1)
 
 def handle_data(data):
-    # decoded_data = check_data(data)
     words = get_words(data)
     word_count = get_word_count(words)
     char_count = get_char_count(words)
@@ -115,17 +113,6 @@ def handle_data(data):
     response = format_response(word_count, char_count, sorted_chars)
     response = pickle.dumps(response)
     return response
-
-def check_data(data):
-    try:
-        if not data:
-            raise Exception("Failed to receive data")
-            
-        res = data.decode()
-        return data
-    except Exception as e:
-        handle_error(e)
-        exit(1)
 
 def get_words(word_string):
     formatted_string = remove_whitespace(word_string)
@@ -178,7 +165,8 @@ def handle_error(err_message):
     cleanup(False)
     
 def cleanup(success):
-    server.close()
+    if server:
+        server.close()
     if success:
         exit(0)
     exit(1)
